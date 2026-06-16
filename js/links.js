@@ -19,16 +19,17 @@ const Links = {
     get links() { return this._data.links; },
 
     getLinksForCategory(catId) {
-        const childIds = this._getAllChildIds(catId);
-        return this.links.filter(l => l.categoryId === catId || childIds.includes(l.categoryId));
+        const childIds = this._getAllCategoryIds(catId);
+        return this.links.filter(l => childIds.includes(l.categoryId));
     },
 
-    _getAllChildIds(parentId) {
-        let result = [];
-        const children = this.categories.filter(c => c.parentId === parentId);
+    // Получить все ID категории и её дочерних
+    _getAllCategoryIds(catId) {
+        const result = [catId];
+        const children = this.categories.filter(c => c.parentId === catId);
         children.forEach(child => {
             result.push(child.id);
-            result = result.concat(this._getAllChildIds(child.id));
+            result.push(...this._getAllCategoryIds(child.id));
         });
         return result;
     },
@@ -48,7 +49,6 @@ const Links = {
         return cat ? cat.name : '📁 Все ссылки';
     },
 
-    // Подсчет ссылок в категории (включая дочерние)
     countLinksInCategory(catId) {
         return this.getLinksForCategory(catId).length;
     },
@@ -75,26 +75,32 @@ const Links = {
     },
 
     deleteCategory(id) {
-        // Подсчитываем количество ссылок в категории
-        const linksCount = this.countLinksInCategory(id);
+        // Находим категорию
         const cat = this.categories.find(c => c.id === id);
-        const catName = cat ? cat.name : 'категорию';
+        if (!cat) {
+            Toast.show('Категория не найдена', 'error');
+            return false;
+        }
         
-        // Формируем сообщение в зависимости от количества ссылок
+        const catName = cat.name;
+        
+        // Получаем все ID для удаления (категория + дочерние)
+        const toDelete = this._getAllCategoryIds(id);
+        
+        // Подсчитываем ссылки
+        const linksCount = this.links.filter(l => toDelete.includes(l.categoryId)).length;
+        
+        // Формируем сообщение
         let message = `Удалить категорию "${catName}"`;
+        if (toDelete.length > 1) {
+            message += ` и все ${toDelete.length - 1} дочерних категорий`;
+        }
         if (linksCount > 0) {
-            message += ` и все ${linksCount} ссылок внутри неё`;
+            message += ` (включая ${linksCount} ссылок)`;
         }
         message += '?';
         
         if (!confirm(message)) return false;
-        
-        const toDelete = [id];
-        const children = this.categories.filter(c => c.parentId === id);
-        children.forEach(child => {
-            toDelete.push(child.id);
-            toDelete.push(...this._getAllChildIds(child.id));
-        });
         
         // Удаляем категории
         this.categories = this.categories.filter(c => !toDelete.includes(c.id));
@@ -103,16 +109,21 @@ const Links = {
         const deletedLinks = this.links.filter(l => toDelete.includes(l.categoryId));
         this.links = this.links.filter(l => !toDelete.includes(l.categoryId));
         
+        // Если выбранная категория была удалена, сбрасываем выбор
         if (this._selectedCategoryId && toDelete.includes(this._selectedCategoryId)) {
             this._selectedCategoryId = null;
         }
         
         if (Store.save(this._data)) {
             this.render();
-            const deletedCount = deletedLinks.length;
+            
+            // Формируем сообщение о результате
             let toastMsg = `Категория "${catName}" удалена`;
-            if (deletedCount > 0) {
-                toastMsg += ` (удалено ${deletedCount} ссылок)`;
+            if (toDelete.length > 1) {
+                toastMsg += ` (удалено ${toDelete.length - 1} дочерних категорий)`;
+            }
+            if (deletedLinks.length > 0) {
+                toastMsg += ` (удалено ${deletedLinks.length} ссылок)`;
             }
             Toast.show(toastMsg, 'info');
             return true;
@@ -169,7 +180,6 @@ const Links = {
         const container = document.getElementById('categoryTree');
         container.innerHTML = this._buildTreeHtml(null, 0);
         
-        // Добавляем обработчики для сворачивания
         container.querySelectorAll('.toggle-icon').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -182,12 +192,10 @@ const Links = {
             });
         });
 
-        // Добавляем Drag & Drop только для корневых категорий
         this._setupDragAndDrop();
     },
 
     _setupDragAndDrop() {
-        // Находим только корневые категории (первый уровень)
         const rootNodes = document.querySelectorAll('.tree > ul > li > .node');
         
         rootNodes.forEach(node => {
@@ -211,10 +219,8 @@ const Links = {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
                 
-                // Разрешаем drop только на корневые категории
                 const targetNode = e.target.closest('.node');
                 if (targetNode && this._draggedCategoryId && this._draggedCategoryId !== targetNode.dataset.id) {
-                    // Проверяем, что целевая категория тоже корневая
                     const isTargetRoot = this.categories.find(c => c.id === targetNode.dataset.id)?.parentId === null;
                     if (isTargetRoot) {
                         document.querySelectorAll('.tree-item .node.drag-over').forEach(el => {
@@ -249,7 +255,6 @@ const Links = {
         
         if (!draggedCat || !targetCat) return;
         
-        // Проверяем, что обе категории корневые
         if (draggedCat.parentId !== null) {
             Toast.show('Можно перемещать только корневые категории', 'warning');
             return;
@@ -260,10 +265,8 @@ const Links = {
             return;
         }
         
-        // Нельзя перемещать в саму себя
         if (draggedId === targetId) return;
         
-        // Меняем порядок: находим индексы и меняем их местами
         const allCategories = this.categories;
         const draggedCatObj = allCategories.find(c => c.id === draggedId);
         const targetCatObj = allCategories.find(c => c.id === targetId);
@@ -329,7 +332,6 @@ const Links = {
             categoryName = '📁 ' + this.getCategoryPath(this._selectedCategoryId);
         }
 
-        // Добавляем кнопку "Все ссылки" в заголовок, если выбрана категория
         let backButton = '';
         if (this._selectedCategoryId) {
             backButton = `<button class="btn-back" onclick="Links.showAllLinks()" style="background:var(--border-color);border:none;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:0.8em;margin-left:10px;">← Все ссылки</button>`;
@@ -370,7 +372,6 @@ const Links = {
         container.innerHTML = html;
     },
 
-    // Новая функция для показа всех ссылок
     showAllLinks() {
         this._selectedCategoryId = null;
         this.render();
