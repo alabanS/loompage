@@ -24,7 +24,6 @@ const Links = {
         return this.links.filter(l => childIds.includes(l.categoryId));
     },
 
-    // Получить все ID категории и её дочерних
     _getAllCategoryIds(catId) {
         const result = [catId];
         const children = this.categories.filter(c => c.parentId === catId);
@@ -76,7 +75,8 @@ const Links = {
     },
 
     deleteCategory(id) {
-        // Находим категорию
+        console.log('🗑️ deleteCategory вызван с ID:', id);
+        
         const cat = this.categories.find(c => c.id === id);
         if (!cat) {
             Toast.show('Категория не найдена', 'error');
@@ -84,14 +84,9 @@ const Links = {
         }
         
         const catName = cat.name;
-        
-        // Получаем все ID для удаления (категория + дочерние)
         const toDelete = this._getAllCategoryIds(id);
-        
-        // Подсчитываем ссылки
         const linksCount = this.links.filter(l => toDelete.includes(l.categoryId)).length;
         
-        // Формируем сообщение
         let message = `Удалить категорию "${catName}"`;
         if (toDelete.length > 1) {
             message += ` и все ${toDelete.length - 1} дочерних категорий`;
@@ -103,22 +98,17 @@ const Links = {
         
         if (!confirm(message)) return false;
         
-        // Удаляем категории
         this.categories = this.categories.filter(c => !toDelete.includes(c.id));
-        
-        // Удаляем ссылки из этих категорий
         const deletedLinks = this.links.filter(l => toDelete.includes(l.categoryId));
         this.links = this.links.filter(l => !toDelete.includes(l.categoryId));
         
-        // Если выбранная категория была удалена, сбрасываем выбор
         if (this._selectedCategoryId && toDelete.includes(this._selectedCategoryId)) {
             this._selectedCategoryId = null;
         }
         
         if (Store.save(this._data)) {
+            console.log('✅ Категория удалена, перерисовка...');
             this.render();
-            
-            // Формируем сообщение о результате
             let toastMsg = `Категория "${catName}" удалена`;
             if (toDelete.length > 1) {
                 toastMsg += ` (удалено ${toDelete.length - 1} дочерних категорий)`;
@@ -181,7 +171,6 @@ const Links = {
         const container = document.getElementById('categoryTree');
         container.innerHTML = this._buildTreeHtml(null, 0);
         
-        // Добавляем обработчики для сворачивания
         container.querySelectorAll('.toggle-icon').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -194,12 +183,10 @@ const Links = {
             });
         });
 
-        // Добавляем Drag & Drop только для корневых категорий
         this._setupDragAndDrop();
     },
 
     _setupDragAndDrop() {
-        // Находим только корневые категории (первый уровень)
         const rootNodes = document.querySelectorAll('.tree > ul > li > .node');
         
         rootNodes.forEach(node => {
@@ -223,10 +210,8 @@ const Links = {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
                 
-                // Разрешаем drop только на корневые категории
                 const targetNode = e.target.closest('.node');
                 if (targetNode && this._draggedCategoryId && this._draggedCategoryId !== targetNode.dataset.id) {
-                    // Проверяем, что целевая категория тоже корневая
                     const isTargetRoot = this.categories.find(c => c.id === targetNode.dataset.id)?.parentId === null;
                     if (isTargetRoot) {
                         document.querySelectorAll('.tree-item .node.drag-over').forEach(el => {
@@ -261,7 +246,6 @@ const Links = {
         
         if (!draggedCat || !targetCat) return;
         
-        // Проверяем, что обе категории корневые
         if (draggedCat.parentId !== null) {
             Toast.show('Можно перемещать только корневые категории', 'warning');
             return;
@@ -272,10 +256,8 @@ const Links = {
             return;
         }
         
-        // Нельзя перемещать в саму себя
         if (draggedId === targetId) return;
         
-        // Меняем порядок: находим индексы и меняем их местами
         const allCategories = this.categories;
         const draggedCatObj = allCategories.find(c => c.id === draggedId);
         const targetCatObj = allCategories.find(c => c.id === targetId);
@@ -318,7 +300,7 @@ const Links = {
                         </span>
                         <span class="node-actions">
                             <button onclick="event.stopPropagation(); Links._editCategory('${cat.id}')" title="Редактировать">✏️</button>
-                            <button class="delete-btn" onclick="event.stopPropagation(); Links.deleteCategory('${cat.id}')" title="Удалить">🗑️</button>
+                            <button onclick="event.stopPropagation(); Links.deleteCategory('${cat.id}')" title="Удалить">🗑️</button>
                         </span>
                     </div>
                     ${childHtml ? `<div class="children-wrapper" data-parent="${cat.id}">${childHtml}</div>` : ''}
@@ -341,7 +323,6 @@ const Links = {
             categoryName = '📁 ' + this.getCategoryPath(this._selectedCategoryId);
         }
 
-        // Добавляем кнопку "Все ссылки" в заголовок, если выбрана категория
         let backButton = '';
         if (this._selectedCategoryId) {
             backButton = `<button class="btn-back" onclick="Links.showAllLinks()" style="background:var(--border-color);border:none;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:0.8em;margin-left:10px;">← Все ссылки</button>`;
@@ -373,7 +354,7 @@ const Links = {
                     </div>
                     <div class="link-actions">
                         <button onclick="Links._editLink('${link.id}')" title="Редактировать">✏️</button>
-                        <button class="delete-btn" onclick="Links.deleteLink('${link.id}')" title="Удалить">🗑️</button>
+                        <button onclick="Links.deleteLink('${link.id}')" title="Удалить">🗑️</button>
                     </div>
                 </div>
             `;
@@ -382,7 +363,6 @@ const Links = {
         container.innerHTML = html;
     },
 
-    // Функция для показа всех ссылок
     showAllLinks() {
         this._selectedCategoryId = null;
         this.render();
