@@ -93,10 +93,7 @@ body {
     align-items: center;
     gap: 10px;
 }
-.title-section h1::before {
-    content: "📋";
-    font-size: 1.2em;
-}
+
 
 .header-actions {
     display: flex;
