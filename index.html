@@ -1,170 +1,253 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои задачи на день</title>
-    
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Канбан доска + Заметки + Ссылки</title>
+
+    <!-- Библиотеки -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+    </script>
+
     <!-- CSS -->
     <link rel="stylesheet" href="css/style.css">
-    
-    <!-- Библиотеки -->
-    <script src="libs/xlsx.full.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Шапка -->
-        <div class="header">
+
+    <div class="app-container" id="app">
+
+        <!-- ШАПКА -->
+        <header class="header">
             <div class="title-section">
-                <h1>Just Do List</h1>
-                <div class="date-badge" id="currentDate" onclick="calendarModule.toggleCalendar()"></div>
+                <h1>Канбан доска</h1>
+                <span class="stat-item" style="border-color:transparent; background:var(--card-bg);">
+                    📅 <span id="currentDate"></span>
+                </span>
             </div>
-            <button class="add-button" onclick="tasksModule.toggleForm()" title="Добавить задачу">+</button>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle" title="Сменить тему">🌓</button>
+                <button class="add-btn" id="addTaskBtn" title="Добавить задачу">+</button>
+            </div>
+        </header>
+
+        <!-- НАВИГАЦИЯ -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-page="kanban">📋 Канбан</button>
+            <button class="nav-tab" data-page="links">🔗 Ссылки</button>
+            <button class="nav-tab" data-page="notes">📝 Заметки</button>
         </div>
 
-        <!-- Компактный календарь -->
-        <div class="mini-calendar" id="miniCalendar">
-            <div class="calendar-header">
-                <span class="calendar-month" id="calendarMonth">Февраль 2026</span>
-                <div class="calendar-nav">
-                    <button onclick="calendarModule.changeMonth(-1)">←</button>
-                    <button onclick="calendarModule.changeMonth(1)">→</button>
+        <!-- ===================== СТРАНИЦА КАНБАН ===================== -->
+        <div class="page active" id="pageKanban">
+            <!-- СТАТИСТИКА -->
+            <div class="stats-bar">
+                <div class="stat-item">📊 Всего: <span id="totalTasks">0</span></div>
+                <div class="stat-item">⏳ В работе: <span id="progressTasks">0</span></div>
+                <div class="stat-item">✅ Выполнено: <span id="doneTasks">0</span></div>
+                <div class="stat-item">📦 Архив: <span id="archiveTasks">0</span></div>
+                <button class="excel-btn" id="exportExcelBtn">📊 Скачать Excel</button>
+            </div>
+
+            <!-- ПОИСК И ФИЛЬТРЫ -->
+            <div class="search-section">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Поиск задач..." />
                 </div>
-            </div>
-            <div class="calendar-weekdays">
-                <span>Пн</span>
-                <span>Вт</span>
-                <span>Ср</span>
-                <span>Чт</span>
-                <span>Пт</span>
-                <span>Сб</span>
-                <span>Вс</span>
-            </div>
-            <div class="calendar-days" id="calendarDays"></div>
-        </div>
-
-        <!-- Статистика -->
-        <div class="stats-container">
-            <div class="stat-card">
-                <span>📊</span>
-                <span id="totalTasks">0</span>
-            </div>
-            <div class="stat-card">
-                <span>✅</span>
-                <span id="completedTasks">0</span>
-            </div>
-            <div class="stat-card">
-                <span>⏳</span>
-                <span id="pendingTasks">0</span>
-            </div>
-            <button class="excel-button" onclick="exportModule.exportToExcel()">
-                <span>📊</span> Скачать Excel-отчет
-            </button>
-        </div>
-
-        <!-- Прогресс бар -->
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-        </div>
-
-        <!-- Форма добавления задачи -->
-        <div class="task-form" id="taskForm">
-            <h3 style="margin-bottom: 15px; color: #555;">➕ Новая задача</h3>
-            
-            <div class="form-group">
-                <label>Название задачи *</label>
-                <input type="text" id="taskTitle" placeholder="Что нужно сделать?">
-            </div>
-
-            <div class="form-group">
-                <label>Описание</label>
-                <textarea id="taskDescription" placeholder="Подробности задачи..."></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Дата и время</label>
-                <input type="datetime-local" id="taskDateTime">
-            </div>
-
-            <div class="form-group">
-                <label>Приоритет</label>
-                <div class="priority-selector" id="prioritySelector">
-                    <div class="priority-option" data-priority="high" onclick="tasksModule.selectPriority('high')">🔴 Высокий</div>
-                    <div class="priority-option" data-priority="medium" onclick="tasksModule.selectPriority('medium')">🟡 Средний</div>
-                    <div class="priority-option" data-priority="low" onclick="tasksModule.selectPriority('low')">🟢 Низкий</div>
+                <div class="filter-group">
+                    <button class="filter-btn active" data-filter="all">Все</button>
+                    <button class="filter-btn" data-filter="todo">📝 To Do</button>
+                    <button class="filter-btn" data-filter="progress">🔄 В работе</button>
+                    <button class="filter-btn" data-filter="review">👀 На проверке</button>
+                    <button class="filter-btn" data-filter="done">✅ Готово</button>
+                    <button class="filter-btn" data-filter="archive">📦 Архив</button>
                 </div>
             </div>
 
-            <!-- Подзадачи -->
-            <div class="subtasks-section">
-                <div class="subtasks-header">
-                    <h4>Подзадачи</h4>
-                    <button class="add-subtask-btn" onclick="tasksModule.addSubtaskField()" type="button">+</button>
-                </div>
-                <div id="subtasksContainer"></div>
+            <!-- КАНБАН ДОСКА -->
+            <div class="kanban-board" id="kanbanBoard">
+                <!-- Колонки генерируются JS -->
             </div>
-
-            <button class="save-btn" onclick="tasksModule.addTask()">Добавить задачу</button>
         </div>
 
-        <!-- Фильтры -->
-        <div class="filters">
-            <button class="filter-btn active" onclick="tasksModule.filterTasks('all')" id="filterAll">Все</button>
-            <button class="filter-btn" onclick="tasksModule.filterTasks('pending')" id="filterPending">Активные</button>
-            <button class="filter-btn" onclick="tasksModule.filterTasks('completed')" id="filterCompleted">Выполненные</button>
+        <!-- ===================== СТРАНИЦА ССЫЛОК ===================== -->
+        <div class="page" id="pageLinks">
+            <div class="links-page">
+                <div class="links-sidebar" id="linksSidebar">
+                    <div class="sidebar-header">
+                        <h3>📂 Категории</h3>
+                        <button id="addCategoryBtn">+</button>
+                    </div>
+                    <ul class="tree" id="categoryTree">
+                        <!-- Генерируется JS -->
+                    </ul>
+                </div>
+                <div class="links-content" id="linksContent">
+                    <div class="links-header">
+                        <h3 id="currentCategoryTitle">📁 Все ссылки</h3>
+                        <div class="actions">
+                            <button class="btn-add-link" id="addLinkBtn">➕ Добавить ссылку</button>
+                            <button class="btn-export-links" id="exportLinksBtn">📊 Экспорт</button>
+                        </div>
+                    </div>
+                    <div id="linksList">
+                        <!-- Список ссылок генерируется JS -->
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Список задач -->
-        <div class="tasks-list" id="tasksList"></div>
+        <!-- ===================== СТРАНИЦА ЗАМЕТОК ===================== -->
+        <div class="page" id="pageNotes">
+            <div class="notes-page">
+                <div class="notes-header">
+                    <h2>📝 Мои заметки</h2>
+                    <div class="actions">
+                        <button class="btn-add-note" id="addNoteBtn">➕ Добавить заметку</button>
+                        <button class="btn-export-notes" id="exportNotesBtn">📊 Экспорт</button>
+                    </div>
+                </div>
+                <div class="notes-grid" id="notesGrid">
+                    <!-- Заметки генерируются JS -->
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- Модальное окно редактирования -->
-    <div class="modal" id="editModal">
+    <!-- ===================== ФОРМА ЗАДАЧИ ===================== -->
+    <div class="modal-overlay" id="taskFormOverlay">
         <div class="modal-content">
-            <h2>✏️ Редактировать задачу</h2>
-            
-            <div class="form-group">
-                <label>Название</label>
-                <input type="text" id="editTitle">
-            </div>
-
-            <div class="form-group">
-                <label>Описание</label>
-                <textarea id="editDescription"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Дата и время</label>
-                <input type="datetime-local" id="editDateTime">
-            </div>
-
-            <div class="form-group">
-                <label>Приоритет</label>
-                <select id="editPriority">
-                    <option value="high">🔴 Высокий</option>
-                    <option value="medium">🟡 Средний</option>
-                    <option value="low">🟢 Низкий</option>
-                </select>
-            </div>
-
-            <!-- Секция подзадач для редактирования -->
-            <div class="subtasks-section">
-                <div class="subtasks-header">
-                    <h4>Подзадачи</h4>
-                    <button class="add-subtask-btn" onclick="tasksModule.addEditSubtaskField()" type="button">+</button>
+            <h2 id="taskFormTitle">➕ Новая задача</h2>
+            <form id="taskForm" autocomplete="off">
+                <div class="form-group">
+                    <label>Название *</label>
+                    <input type="text" id="taskTitle" placeholder="Что нужно сделать?" required />
                 </div>
-                <div id="editSubtasksContainer"></div>
-            </div>
-
-            <button class="save-btn" onclick="tasksModule.saveEdit()">Сохранить</button>
-            <button class="save-btn close-btn" onclick="tasksModule.closeModal()">Отмена</button>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="taskDesc" placeholder="Подробности..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Ссылка</label>
+                    <input type="url" id="taskLink" placeholder="https://example.com" />
+                    <span class="hint">🔗 Ссылка будет отображаться в карточке</span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Дедлайн</label>
+                        <input type="datetime-local" id="taskDeadline" />
+                    </div>
+                    <div class="form-group">
+                        <label>Категория</label>
+                        <select id="taskCategory">
+                            <option value="work">💼 Работа</option>
+                            <option value="personal">🏠 Личное</option>
+                            <option value="study">📚 Учеба</option>
+                            <option value="health">❤️ Здоровье</option>
+                            <option value="other">📌 Другое</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Приоритет</label>
+                    <div class="priority-selector" id="prioritySelector">
+                        <div class="priority-opt" data-priority="high">🔴 Высокий</div>
+                        <div class="priority-opt selected" data-priority="medium">🟡 Средний</div>
+                        <div class="priority-opt" data-priority="low">🟢 Низкий</div>
+                    </div>
+                </div>
+                <input type="hidden" id="editTaskId" value="" />
+                <div class="form-actions">
+                    <button type="submit" class="btn-save" id="taskFormSubmit">Добавить</button>
+                    <button type="button" class="btn-cancel" id="taskFormCancel">Отмена</button>
+                </div>
+            </form>
         </div>
     </div>
+
+    <!-- ===================== ФОРМА КАТЕГОРИИ ===================== -->
+    <div class="modal-overlay" id="categoryFormOverlay">
+        <div class="modal-content">
+            <h2 id="categoryFormTitle">📁 Новая категория</h2>
+            <form id="categoryForm" autocomplete="off">
+                <div class="form-group">
+                    <label>Название категории *</label>
+                    <input type="text" id="categoryName" placeholder="Введите название..." required />
+                </div>
+                <div class="form-group">
+                    <label>Родительская категория</label>
+                    <select id="categoryParent">
+                        <option value="">— Корневая —</option>
+                    </select>
+                </div>
+                <input type="hidden" id="editCategoryId" value="" />
+                <div class="form-actions">
+                    <button type="submit" class="btn-save" id="categoryFormSubmit">Добавить</button>
+                    <button type="button" class="btn-cancel" id="categoryFormCancel">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== ФОРМА ССЫЛКИ ===================== -->
+    <div class="modal-overlay" id="linkFormOverlay">
+        <div class="modal-content">
+            <h2 id="linkFormTitle">🔗 Новая ссылка</h2>
+            <form id="linkForm" autocomplete="off">
+                <div class="form-group">
+                    <label>Название *</label>
+                    <input type="text" id="linkTitle" placeholder="Название ссылки" required />
+                </div>
+                <div class="form-group">
+                    <label>URL *</label>
+                    <input type="url" id="linkUrl" placeholder="https://example.com" required />
+                    <span class="hint">Введите полный URL с https://</span>
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="linkDesc" placeholder="Краткое описание..."></textarea>
+                </div>
+                <input type="hidden" id="editLinkId" value="" />
+                <input type="hidden" id="linkCategoryId" value="" />
+                <div class="form-actions">
+                    <button type="submit" class="btn-save" id="linkFormSubmit">Добавить</button>
+                    <button type="button" class="btn-cancel" id="linkFormCancel">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================== ФОРМА ЗАМЕТКИ ===================== -->
+    <div class="modal-overlay" id="noteFormOverlay">
+        <div class="modal-content">
+            <h2 id="noteFormTitle">📝 Новая заметка</h2>
+            <form id="noteForm" autocomplete="off">
+                <div class="form-group">
+                    <label>Заголовок *</label>
+                    <input type="text" id="noteTitle" placeholder="О чём заметка?" required />
+                </div>
+                <div class="form-group">
+                    <label>Текст заметки</label>
+                    <textarea id="noteContent" placeholder="Что нужно запомнить?&#10;Например: что сказать на дейлике..." rows="6"></textarea>
+                    <span class="hint">💡 Используйте для записей, идей, планов на дейлики</span>
+                </div>
+                <input type="hidden" id="editNoteId" value="" />
+                <div class="form-actions">
+                    <button type="submit" class="btn-save" id="noteFormSubmit">Добавить</button>
+                    <button type="button" class="btn-cancel" id="noteFormCancel">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- УВЕДОМЛЕНИЯ -->
+    <div class="toast-container" id="toastContainer"></div>
 
     <!-- JavaScript модули -->
-    <script src="js/calendar.js"></script>
-    <script src="js/tasks.js"></script>
-    <script src="js/export.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/links.js"></script>
+    <script src="js/notes.js"></script>
 </body>
 </html>
