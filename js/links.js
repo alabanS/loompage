@@ -4,6 +4,7 @@
 const Links = {
     _data: null,
     _selectedCategoryId: null,
+    _draggedCategoryId: null,
 
     init() {
         this._data = Store.getAll();
@@ -133,6 +134,7 @@ const Links = {
     _renderTree() {
         const container = document.getElementById('categoryTree');
         container.innerHTML = this._buildTreeHtml(null, 0);
+        
         // Добавляем обработчики для сворачивания
         container.querySelectorAll('.toggle-icon').forEach(el => {
             el.addEventListener('click', (e) => {
@@ -145,6 +147,88 @@ const Links = {
                 }
             });
         });
+
+        // Добавляем Drag & Drop для категорий
+        this._setupDragAndDrop();
+    },
+
+    _setupDragAndDrop() {
+        const nodes = document.querySelectorAll('.tree-item .node');
+        nodes.forEach(node => {
+            node.setAttribute('draggable', 'true');
+            
+            node.addEventListener('dragstart', (e) => {
+                this._draggedCategoryId = node.dataset.id;
+                node.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            node.addEventListener('dragend', () => {
+                node.classList.remove('dragging');
+                this._draggedCategoryId = null;
+                document.querySelectorAll('.tree-item .node.drag-over').forEach(el => {
+                    el.classList.remove('drag-over');
+                });
+            });
+
+            node.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (this._draggedCategoryId && this._draggedCategoryId !== node.dataset.id) {
+                    document.querySelectorAll('.tree-item .node.drag-over').forEach(el => {
+                        el.classList.remove('drag-over');
+                    });
+                    node.classList.add('drag-over');
+                }
+            });
+
+            node.addEventListener('dragleave', () => {
+                node.classList.remove('drag-over');
+            });
+
+            node.addEventListener('drop', (e) => {
+                e.preventDefault();
+                node.classList.remove('drag-over');
+                const draggedId = this._draggedCategoryId;
+                const targetId = node.dataset.id;
+                
+                if (draggedId && draggedId !== targetId) {
+                    this._moveCategory(draggedId, targetId);
+                }
+                this._draggedCategoryId = null;
+            });
+        });
+    },
+
+    _moveCategory(draggedId, targetId) {
+        const draggedCat = this.categories.find(c => c.id === draggedId);
+        const targetCat = this.categories.find(c => c.id === targetId);
+        
+        if (!draggedCat || !targetCat) return;
+        
+        // Нельзя перемещать категорию в саму себя или в дочернюю
+        if (draggedId === targetId) return;
+        if (this._isChildOf(draggedId, targetId)) {
+            Toast.show('Нельзя переместить категорию в дочернюю', 'warning');
+            return;
+        }
+        
+        // Меняем parentId у перемещаемой категории на targetId
+        draggedCat.parentId = targetId;
+        
+        if (Store.save(this._data)) {
+            this.render();
+            Toast.show(`Категория "${draggedCat.name}" перемещена в "${targetCat.name}"`, 'success');
+        }
+    },
+
+    _isChildOf(parentId, childId) {
+        const children = this.categories.filter(c => c.parentId === parentId);
+        for (let child of children) {
+            if (child.id === childId) return true;
+            if (this._isChildOf(child.id, childId)) return true;
+        }
+        return false;
     },
 
     _buildTreeHtml(parentId, level) {
@@ -192,7 +276,13 @@ const Links = {
             categoryName = '📁 ' + this.getCategoryPath(this._selectedCategoryId);
         }
 
-        title.textContent = categoryName + ` (${links.length})`;
+        // Добавляем кнопку "Все ссылки" в заголовок, если выбрана категория
+        let backButton = '';
+        if (this._selectedCategoryId) {
+            backButton = `<button class="btn-back" onclick="Links.showAllLinks()" style="background:var(--border-color);border:none;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:0.8em;margin-left:10px;">← Все ссылки</button>`;
+        }
+
+        title.innerHTML = categoryName + ` (${links.length})` + backButton;
 
         if (links.length === 0) {
             container.innerHTML = `
@@ -225,6 +315,12 @@ const Links = {
         });
 
         container.innerHTML = html;
+    },
+
+    // Новая функция для показа всех ссылок
+    showAllLinks() {
+        this._selectedCategoryId = null;
+        this.render();
     },
 
     _escape(text) {
