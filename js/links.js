@@ -48,6 +48,11 @@ const Links = {
         return cat ? cat.name : '📁 Все ссылки';
     },
 
+    // Подсчет ссылок в категории (включая дочерние)
+    countLinksInCategory(catId) {
+        return this.getLinksForCategory(catId).length;
+    },
+
     saveCategory(data) {
         const isEdit = !!data.id;
         if (isEdit) {
@@ -70,21 +75,46 @@ const Links = {
     },
 
     deleteCategory(id) {
-        if (!confirm('Удалить категорию и все её подкатегории?')) return false;
+        // Подсчитываем количество ссылок в категории
+        const linksCount = this.countLinksInCategory(id);
+        const cat = this.categories.find(c => c.id === id);
+        const catName = cat ? cat.name : 'категорию';
+        
+        // Формируем сообщение в зависимости от количества ссылок
+        let message = `Удалить категорию "${catName}"`;
+        if (linksCount > 0) {
+            message += ` и все ${linksCount} ссылок внутри неё`;
+        }
+        message += '?';
+        
+        if (!confirm(message)) return false;
+        
         const toDelete = [id];
         const children = this.categories.filter(c => c.parentId === id);
         children.forEach(child => {
             toDelete.push(child.id);
             toDelete.push(...this._getAllChildIds(child.id));
         });
+        
+        // Удаляем категории
         this.categories = this.categories.filter(c => !toDelete.includes(c.id));
+        
+        // Удаляем ссылки из этих категорий
+        const deletedLinks = this.links.filter(l => toDelete.includes(l.categoryId));
         this.links = this.links.filter(l => !toDelete.includes(l.categoryId));
+        
         if (this._selectedCategoryId && toDelete.includes(this._selectedCategoryId)) {
             this._selectedCategoryId = null;
         }
+        
         if (Store.save(this._data)) {
             this.render();
-            Toast.show('Категория удалена', 'info');
+            const deletedCount = deletedLinks.length;
+            let toastMsg = `Категория "${catName}" удалена`;
+            if (deletedCount > 0) {
+                toastMsg += ` (удалено ${deletedCount} ссылок)`;
+            }
+            Toast.show(toastMsg, 'info');
             return true;
         }
         return false;
@@ -114,13 +144,17 @@ const Links = {
     },
 
     deleteLink(id) {
-        if (!confirm('Удалить ссылку?')) return false;
+        const link = this.links.find(l => l.id === id);
+        if (!link) return false;
+        
+        if (!confirm(`Удалить ссылку "${link.title}"?`)) return false;
+        
         const idx = this.links.findIndex(l => l.id === id);
         if (idx === -1) return false;
         this.links.splice(idx, 1);
         if (Store.save(this._data)) {
             this.render();
-            Toast.show('Ссылка удалена', 'info');
+            Toast.show(`Ссылка "${link.title}" удалена`, 'info');
             return true;
         }
         return false;
@@ -230,18 +264,12 @@ const Links = {
         if (draggedId === targetId) return;
         
         // Меняем порядок: находим индексы и меняем их местами
-        const rootCategories = this.categories.filter(c => c.parentId === null);
-        const draggedIndex = rootCategories.findIndex(c => c.id === draggedId);
-        const targetIndex = rootCategories.findIndex(c => c.id === targetId);
-        
-        if (draggedIndex === -1 || targetIndex === -1) return;
-        
-        // Переставляем элементы в массиве
         const allCategories = this.categories;
         const draggedCatObj = allCategories.find(c => c.id === draggedId);
         const targetCatObj = allCategories.find(c => c.id === targetId);
         
-        // Меняем местами в массиве
+        if (!draggedCatObj || !targetCatObj) return;
+        
         const draggedIdx = allCategories.indexOf(draggedCatObj);
         const targetIdx = allCategories.indexOf(targetCatObj);
         
@@ -254,15 +282,6 @@ const Links = {
         }
     },
 
-    _isChildOf(parentId, childId) {
-        const children = this.categories.filter(c => c.parentId === parentId);
-        for (let child of children) {
-            if (child.id === childId) return true;
-            if (this._isChildOf(child.id, childId)) return true;
-        }
-        return false;
-    },
-
     _buildTreeHtml(parentId, level) {
         const cats = this.categories.filter(c => c.parentId === parentId);
         if (cats.length === 0) return '';
@@ -272,6 +291,7 @@ const Links = {
             const isActive = this._selectedCategoryId === cat.id;
             const hasChildren = this.categories.some(c => c.parentId === cat.id);
             const childHtml = this._buildTreeHtml(cat.id, level + 1);
+            const linksCount = this.countLinksInCategory(cat.id);
 
             html += `
                 <li class="tree-item">
@@ -282,6 +302,7 @@ const Links = {
                             </span>
                             <span class="folder-icon">${hasChildren ? '📁' : '📄'}</span>
                             ${this._escape(cat.name)}
+                            ${linksCount > 0 ? `<span style="font-size:0.7em;color:var(--text-muted);margin-left:4px;">(${linksCount})</span>` : ''}
                         </span>
                         <span class="node-actions">
                             <button onclick="event.stopPropagation(); Links._editCategory('${cat.id}')" title="Редактировать">✏️</button>
