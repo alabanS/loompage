@@ -667,6 +667,15 @@ body {
     color: white;
 }
 
+/* Курсор для перетаскивания */
+.tree > ul > li > .node {
+    cursor: grab;
+}
+
+.tree > ul > li > .node:active {
+    cursor: grabbing;
+}
+
 .links-content {
     flex: 1;
     background: var(--card-bg);
