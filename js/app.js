@@ -37,10 +37,124 @@ const Theme = {
 };
 
 // =====================================================================
+//  ОБНОВЛЕНИЕ ДАТЫ
+// =====================================================================
+function updateDate() {
+    const now = new Date();
+    const options = { day: 'numeric', month: 'long', year: 'numeric' };
+    const dateString = now.toLocaleDateString('ru-RU', options);
+    document.getElementById('currentDate').textContent = dateString;
+}
+
+// =====================================================================
+//  МОДУЛЬ ЭКСПОРТА/ИМПОРТА
+// =====================================================================
+const Backup = {
+    // Экспорт данных
+    exportData() {
+        try {
+            const data = Store.getAll();
+            
+            // Добавляем метаданные
+            const exportData = {
+                version: '1.0',
+                exportedAt: new Date().toISOString(),
+                appName: 'Loompage',
+                data: data
+            };
+            
+            // Преобразуем в JSON
+            const json = JSON.stringify(exportData, null, 2);
+            
+            // Создаём файл для скачивания
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `loompage-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            Toast.show('✅ Бэкап успешно скачан!', 'success');
+        } catch (error) {
+            console.error('Ошибка экспорта:', error);
+            Toast.show('❌ Ошибка при экспорте данных', 'error');
+        }
+    },
+    
+    // Импорт данных
+    importData() {
+        const input = document.getElementById('fileInput');
+        input.click();
+        
+        input.onchange = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    const importedData = JSON.parse(content);
+                    
+                    // Проверяем, что это наш файл
+                    if (!importedData.data || !importedData.version) {
+                        Toast.show('❌ Неверный формат файла', 'error');
+                        return;
+                    }
+                    
+                    // Проверяем версию
+                    if (importedData.version !== '1.0') {
+                        Toast.show('⚠️ Версия файла не совпадает, но попробуем импортировать', 'warning');
+                    }
+                    
+                    // Подтверждение
+                    const confirmMsg = `
+                        Импортировать данные?
+                        
+                        📊 Задач: ${importedData.data.tasks?.length || 0}
+                        📝 Заметок: ${importedData.data.notes?.length || 0}
+                        📂 Категорий: ${importedData.data.categories?.length || 0}
+                        🔗 Ссылок: ${importedData.data.links?.length || 0}
+                        
+                        ⚠️ Текущие данные будут заменены!
+                    `;
+                    
+                    if (!confirm(confirmMsg)) return;
+                    
+                    // Сохраняем данные
+                    Store.save(importedData.data);
+                    
+                    // Обновляем интерфейс
+                    Tasks.render();
+                    Links.render();
+                    Notes.render();
+                    Tasks._updateStats();
+                    
+                    Toast.show('✅ Данные успешно импортированы!', 'success');
+                    
+                    // Очищаем input
+                    input.value = '';
+                    
+                } catch (error) {
+                    console.error('Ошибка импорта:', error);
+                    Toast.show('❌ Ошибка при импорте данных', 'error');
+                    input.value = '';
+                }
+            };
+            reader.readAsText(file);
+        };
+    }
+};
+
+// =====================================================================
 //  ЗАПУСК
 // =====================================================================
 document.addEventListener('DOMContentLoaded', () => {
     Theme.init();
+    updateDate();
     Tasks.init();
     Links.init();
     Notes.init();
@@ -48,4 +162,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     document.getElementById('taskDeadline').value =
         `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    
+    // Обработчики экспорта/импорта
+    document.getElementById('exportDataBtn').addEventListener('click', () => {
+        Backup.exportData();
+    });
+    
+    document.getElementById('importDataBtn').addEventListener('click', () => {
+        Backup.importData();
+    });
 });
