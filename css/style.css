@@ -191,16 +191,6 @@ body {
     display: none;
 }
 
-/* При наведении скрываем белое и показываем красное */
-.donate-btn:hover .heart-default {
-    display: none;
-}
-
-.donate-btn:hover .heart-hover {
-    display: inline-block;
-    animation: heartBeat 0.6s ease;
-}
-
 /* Анимация пульсации */
 @keyframes heartBeat {
     0% { transform: scale(1); }
