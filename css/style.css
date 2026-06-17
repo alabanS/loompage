@@ -1257,4 +1257,37 @@ body {
     .links-sidebar {
         max-height: 200px;
     }
+    /* ========== КНОПКИ ЭКСПОРТА/ИМПОРТА ========== */
+.export-import-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+
+.export-import-btn:hover {
+    transform: scale(1.08);
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.export-import-btn#exportDataBtn:hover {
+    background: #27ae60;
+    border-color: #27ae60;
+}
+
+.export-import-btn#importDataBtn:hover {
+    background: #2980b9;
+    border-color: #2980b9;
+}
 }
