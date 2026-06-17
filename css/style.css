@@ -177,14 +177,16 @@ body {
     font-size: 0.9em;
     font-weight: 400;
 }
+/* Только для текста "Поддержать проект" в меню */
+.donate-label {
+    margin-left: -4px;     
+}
 
 /* Сердечко в меню */
 .dropdown-item .heart-default,
 .dropdown-item .heart-hover {
     font-size: 18px;
-    min-width: 28px;
-    text-align: center;
-    display: inline-block;
+    margin-left: -6px;
 }
 
 .dropdown-item .heart-hover {
