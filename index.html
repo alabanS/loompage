@@ -32,14 +32,29 @@
                 </span>
             </div>
             <div class="header-actions">
-                <button class="export-import-btn" id="exportDataBtn" title="Скачать бэкап данных">💾</button>
-                <button class="export-import-btn" id="importDataBtn" title="Загрузить бэкап данных">📂</button>
-                     <!-- Кнопка донатов (сердечко) -->
-    <a href="https://cloudtips.ru/ваш_ник" target="_blank" class="export-import-btn donate-btn" title="Поддержать проект">
-        <span class="heart-default">🤍</span>
-        <span class="heart-hover">❤️</span>
-    </a>
-                <!-- Кнопки экспорта/импорта -->
+                <!-- Кнопка меню (троеточие) -->
+                <button class="menu-toggle" id="menuToggle" title="Дополнительные действия">⋮</button>
+                
+                <!-- Выпадающее меню -->
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <!-- Кнопка донатов (сердечко) -->
+                    <a href="https://cloudtips.ru/ваш_ник" target="_blank" class="dropdown-item donate-btn" title="Поддержать проект">
+                        <span class="heart-default">🤍</span>
+                        <span class="heart-hover">❤️</span>
+                        <span class="dropdown-label">Поддержать</span>
+                    </a>
+                    
+                    <!-- Кнопка экспорта -->
+                    <button class="dropdown-item" id="exportDataBtn" title="Скачать бэкап данных">
+                        💾 <span class="dropdown-label">Скачать бэкап</span>
+                    </button>
+                    
+                    <!-- Кнопка импорта -->
+                    <button class="dropdown-item" id="importDataBtn" title="Загрузить бэкап данных">
+                        📂 <span class="dropdown-label">Загрузить бэкап</span>
+                    </button>
+                </div>
+                
                 <button class="theme-toggle" id="themeToggle" title="Сменить тему">🌓</button>
                 <button class="add-btn" id="addTaskBtn" title="Добавить задачу">+</button>
             </div>
@@ -254,8 +269,10 @@
             </form>
         </div>
     </div>
-     <!-- Скрытый input для загрузки файла -->
+    
+    <!-- Скрытый input для загрузки файла -->
     <input type="file" id="fileInput" accept=".json" style="display:none">
+    
     <!-- УВЕДОМЛЕНИЯ -->
     <div class="toast-container" id="toastContainer"></div>
 
@@ -265,20 +282,44 @@
     <script src="js/tasks.js"></script>
     <script src="js/links.js"></script>
     <script src="js/notes.js"></script>
+    
     <script>
-    const donateBtn = document.querySelector('.donate-btn');
-    
-    donateBtn.addEventListener('mouseenter', function() {
-        this.querySelector('.heart-default').style.display = 'none';
-        this.querySelector('.heart-hover').style.display = 'inline-block';
-        this.querySelector('.heart-hover').style.animation = 'heartBeat 0.6s ease';
-    });
-    
-    donateBtn.addEventListener('mouseleave', function() {
-        this.querySelector('.heart-default').style.display = 'inline-block';
-        this.querySelector('.heart-hover').style.display = 'none';
-        this.querySelector('.heart-hover').style.animation = '';
-    });
-</script>
+        // Открытие/закрытие меню
+        const menuToggle = document.getElementById('menuToggle');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('active');
+        });
+        
+        // Закрытие при клике вне меню
+        document.addEventListener('click', function(e) {
+            if (!dropdownMenu.contains(e.target) && e.target !== menuToggle) {
+                dropdownMenu.classList.remove('active');
+            }
+        });
+        
+        // Закрытие при клике на пункт меню
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', function() {
+                dropdownMenu.classList.remove('active');
+            });
+        });
+        
+        // Сердечко (белое → красное при наведении)
+        const donateBtn = document.querySelector('.donate-btn');
+        if (donateBtn) {
+            donateBtn.addEventListener('mouseenter', function() {
+                this.querySelector('.heart-default').style.display = 'none';
+                this.querySelector('.heart-hover').style.display = 'inline-block';
+            });
+            
+            donateBtn.addEventListener('mouseleave', function() {
+                this.querySelector('.heart-default').style.display = 'inline-block';
+                this.querySelector('.heart-hover').style.display = 'none';
+            });
+        }
+    </script>
 </body>
 </html>
